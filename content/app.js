@@ -150,13 +150,20 @@ function initPickers() {
 
   bgPicker.on("change", color => {
     bgColor = color.toHEXA().toString();
-    bgPicker.save();
     scheduleRender();
+  });
+
+  bgPicker.on("hide", color => {
+    bgPicker.applyColor();
   });
 
   iconPicker.on("change", color => {
     iconColor = color.toHEXA().toString();
     scheduleRender();
+  });
+  
+  iconPicker.on("hide", color => {
+    iconPicker.applyColor();
   });
 }
 
