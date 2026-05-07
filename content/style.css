@@ -108,3 +108,12 @@ button:hover {
 button:active {
   transform: scale(0.97);
 }
+
+.color-row {
+  display: flex;
+  gap: 12px;
+}
+
+.color-row label {
+  flex: 1;
+}
