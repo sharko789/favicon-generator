@@ -131,3 +131,11 @@ button:active {
 .pickr .pcr-button {
   width: 100%;
 }
+
+a:link {
+  color: var(--muted);
+}
+
+a:hover {
+  color: var(--accent);
+}
