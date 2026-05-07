@@ -17,7 +17,7 @@ function initPickers() {
   bgPicker = Pickr.create({
     el: '#bgColorButton',
     theme: 'monolith',
-    default: '#1e1e1e',
+    default: '#320984',
     position: 'left',
     components: {
       preview: true,
@@ -63,8 +63,9 @@ function initPickers() {
   });
 }
 
-let bgColor = '#1e1e1e';
+let bgColor = '#320984';
 let iconColor = '#ffffff';
+let pickersInitialized = false;
 
 function setBgColor(value) {
   bgColor = value;
@@ -82,7 +83,7 @@ const iconCache = new Map();
 async function fetchIcon(name) {
   if (iconCache.has(name)) return iconCache.get(name);
 
-  const url = `https://raw.githubusercontent.com/google/material-design-icons/refs/heads/master/symbols/web/${name}/materialsymbolssharp/${name}_fill1_48px.svg`;
+  const url = `https://raw.githubusercontent.com/google/material-design-icons/refs/heads/master/symbols/web/${name}/materialsymbolssharp/${name}_fill1_24px.svg`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("not found");
 
@@ -270,6 +271,9 @@ zipBtn.onclick = async () => {
 
 // Initialize pickers and initial render
 initPickers();
+scheduleRender();
+pickersInitialized = true;
+
 document.body.addEventListener('load', () => {
   const labels = document.querySelectorAll('.color-label');
   labels.forEach(label => {
