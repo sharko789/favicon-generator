@@ -58,7 +58,7 @@ function getStateFromURL() {
     style: params.get("style") || "sharp",
     bg: normalizeColorFromURL(params.get("bg"), "#320984"),
     fg: normalizeColorFromURL(params.get("fg"), "#ffffff"),
-    radius: params.get("radius") || "64",
+    radius: params.get("radius") || "200",
     scale: params.get("scale") || "1"
   };
 }
