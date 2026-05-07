@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Favicon Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LEFT: CONTROLS -->
+  <div class="panel controls">
+    <h2>Favicon Generator</h2>
+
+    <label>
+      Icon Name
+      <input id="iconName" value="home" />
+    </label>
+
+    <label>
+      Background
+      <input type="color" id="bgColor" value="#1e1e1e"/>
+    </label>
+
+    <label>
+      Icon Color
+      <input type="color" id="iconColor" value="#ffffff"/>
+    </label>
+
+    <label>
+      Corner Radius
+      <input type="range" id="radius" min="0" max="800" value="64"/>
+    </label>
+
+  </div>
+
+  <!-- RIGHT: PREVIEW -->
+  <div class="panel preview">
+    <canvas id="canvas" width="512" height="512"></canvas>
+
+    <div class="downloads">
+      <button id="downloadICO">Download .ico</button>
+      <button id="downloadZIP">Download PNG zip</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

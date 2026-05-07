@@ -1,0 +1,15 @@
+services:
+  webserver:
+    image: nginx:latest
+    restart: unless-stopped
+    container_name: favicon_nginx
+    expose:
+      - 80
+    volumes:
+      - ./content:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+
+networks:
+  default:
+    name: proxy
+    external: true
