@@ -271,18 +271,72 @@ async function render() {
 
 // --- Downloads ---
 
+async function createICO(sizes) {
+  const pngs = await Promise.all(
+    sizes.map(async size => {
+      const blob = await canvasToBlob(size);
+
+      return {
+        size,
+        data: new Uint8Array(await blob.arrayBuffer())
+      };
+    })
+  );
+
+  const headerSize = 6;
+  const dirSize = 16 * pngs.length;
+
+  let dataOffset = headerSize + dirSize;
+  let totalSize = dataOffset;
+
+  for (const png of pngs) {
+    totalSize += png.data.length;
+  }
+
+  const buffer = new ArrayBuffer(totalSize);
+  const view = new DataView(buffer);
+
+  let offset = 0;
+
+  // ICONDIR
+  view.setUint16(offset, 0, true); offset += 2; // reserved
+  view.setUint16(offset, 1, true); offset += 2; // type = icon
+  view.setUint16(offset, pngs.length, true); offset += 2;
+
+  // ICONDIRENTRYs
+  let imageOffset = headerSize + dirSize;
+
+  for (const png of pngs) {
+    const size = png.size;
+
+    view.setUint8(offset++, size === 256 ? 0 : size); // width
+    view.setUint8(offset++, size === 256 ? 0 : size); // height
+    view.setUint8(offset++, 0); // palette
+    view.setUint8(offset++, 0); // reserved
+
+    view.setUint16(offset, 1, true); offset += 2; // planes
+    view.setUint16(offset, 32, true); offset += 2; // bpp
+
+    view.setUint32(offset, png.data.length, true); offset += 4;
+    view.setUint32(offset, imageOffset, true); offset += 4;
+
+    imageOffset += png.data.length;
+  }
+
+  // PNG data
+  let writeOffset = headerSize + dirSize;
+
+  for (const png of pngs) {
+    new Uint8Array(buffer, writeOffset).set(png.data);
+    writeOffset += png.data.length;
+  }
+
+  return buffer;
+}
+
 icoBtn.addEventListener("click", async () => {
   try {
-    const pngBuffers = await Promise.all(
-      ICO_SIZES.map(async size => {
-
-        const blob = await canvasToBlob(size);
-
-        return blob.arrayBuffer();
-      })
-    );
-
-    const icoBuffer = await pngToIco(pngBuffers);
+    const icoBuffer = await createICO(ICO_SIZES);
 
     const icoBlob = new Blob(
       [icoBuffer],
