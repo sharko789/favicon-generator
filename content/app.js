@@ -59,7 +59,8 @@ function getStateFromURL() {
     bg: normalizeColorFromURL(params.get("bg"), "#320984"),
     fg: normalizeColorFromURL(params.get("fg"), "#ffffff"),
     radius: params.get("radius") || "200",
-    scale: params.get("scale") || "1"
+    scale: params.get("scale") || "1",
+    format: params.get("format") || null
   };
 }
 
@@ -121,6 +122,24 @@ function canvasToBlob(size, type = "image/png") {
   return new Promise(resolve => {
     temp.toBlob(resolve, type);
   });
+}
+
+async function exportICO() {
+  const icoBuffer = await createICO(ICO_SIZES);
+  const blob = new Blob([icoBuffer], { type: "image/x-icon" });
+  downloadBlob(blob, "favicon.ico");
+}
+
+async function exportZIP() {
+  const zip = new JSZip();
+
+  for (const size of EXPORT_SIZES) {
+    const blob = await canvasToBlob(size);
+    zip.file(`favicon-${size}.png`, blob);
+  }
+
+  const content = await zip.generateAsync({ type: "blob" });
+  downloadBlob(content, "favicons.zip");
 }
 
 
@@ -424,4 +443,12 @@ window.addEventListener("load", () => {
   });
 
   scheduleRender();
+
+  if (initial.format === "ico") {
+    setTimeout(exportICO, 300);
+  }
+
+  if (initial.format === "zip") {
+    setTimeout(exportZIP, 300);
+  }
 });
