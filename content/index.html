@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Favicon Generator</title>
@@ -7,48 +8,50 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css">
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
-<div class="app">
+  <div class="app">
 
-  <!-- LEFT: CONTROLS -->
-  <div class="panel controls">
-    <h2>Favicon Generator</h2>
+    <!-- LEFT: CONTROLS -->
+    <div class="panel controls">
+      <h2>Favicon Generator</h2>
 
-    <label>
-      Icon Name
-      <input id="iconName" value="home" />
-    </label>
+      <label>
+        Icon Name
+        <input id="iconName" value="home" />
+      </label>
 
-    <label>
-      Background color
-      <button id="bgColorButton"></button>
-    </label>
+      <label>
+        Background color
+        <button id="bgColorButton"></button>
+      </label>
 
-    <label>
-      Icon color
-      <button id="iconColorButton"></button>
-    </label>
+      <label>
+        Icon color
+        <button id="iconColorButton"></button>
+      </label>
 
-    <label>
-      Corner Radius
-      <input type="range" id="radius" min="0" max="256" value="64"/>
-    </label>
+      <label>
+        Corner Radius
+        <input type="range" id="radius" min="0" max="256" value="64" />
+      </label>
 
-  </div>
-
-  <!-- RIGHT: PREVIEW -->
-  <div class="panel preview">
-    <canvas id="canvas" width="512" height="512"></canvas>
-
-    <div class="downloads">
-      <button id="downloadICO">Download .ico</button>
-      <button id="downloadZIP">Download PNG zip</button>
     </div>
+
+    <!-- RIGHT: PREVIEW -->
+    <div class="panel preview">
+      <canvas id="canvas" width="512" height="512"></canvas>
+
+      <div class="downloads">
+        <button id="downloadICO">Download .ico</button>
+        <button id="downloadZIP">Download PNG zip</button>
+      </div>
+    </div>
+
   </div>
 
-</div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
+
 </html>

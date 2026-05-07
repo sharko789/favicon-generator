@@ -200,10 +200,10 @@ icoBtn.onclick = async () => {
 
   blobs.forEach((blob, i) => {
     const size = sizes[i];
-    view.setUint8(6 + i*16, size);
-    view.setUint8(7 + i*16, size);
-    view.setUint32(14 + i*16, blob.size, true);
-    view.setUint32(18 + i*16, offset, true);
+    view.setUint8(6 + i * 16, size);
+    view.setUint8(7 + i * 16, size);
+    view.setUint32(14 + i * 16, blob.size, true);
+    view.setUint32(18 + i * 16, offset, true);
 
     parts.push(blob);
     offset += blob.size;
