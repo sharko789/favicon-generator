@@ -1,3 +1,9 @@
+const CANVAS_SIZE = 512;
+const ICON_PADDING = 80;
+
+const EXPORT_SIZES = [16, 32, 48, 64, 128, 256, 512];
+const ICO_SIZES = [16, 32, 48, 64];
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -7,277 +13,320 @@ const radiusInput = document.getElementById("radius");
 const icoBtn = document.getElementById("downloadICO");
 const zipBtn = document.getElementById("downloadZIP");
 
-let currentIconName = "";
-let debounceTimer = null;
+const offscreen = document.createElement("canvas");
+offscreen.width = CANVAS_SIZE;
+offscreen.height = CANVAS_SIZE;
 
-// --- Create Pickr instances for both colors ---
-let bgPicker, iconPicker;
+const octx = offscreen.getContext("2d");
+
+let bgColor = "#320984";
+let iconColor = "#ffffff";
+
+let bgPicker;
+let iconPicker;
+
+let renderVersion = 0;
+let renderScheduled = false;
+
+let currentAbortController = null;
+
+const iconCache = new Map();
+const coloredSvgCache = new Map();
+const pathCache = new Map();
+
+
+
+// --- Utilities ---
+
+function scheduleRender() {
+  if (renderScheduled) return;
+
+  renderScheduled = true;
+
+  requestAnimationFrame(async () => {
+    renderScheduled = false;
+    await render();
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+function canvasToBlob(size, type = "image/png") {
+  const temp = document.createElement("canvas");
+
+  temp.width = size;
+  temp.height = size;
+
+  const tctx = temp.getContext("2d");
+
+  tctx.drawImage(canvas, 0, 0, size, size);
+
+  return new Promise(resolve => {
+    temp.toBlob(resolve, type);
+  });
+}
+
+
+// --- Rounded Rect Path Cache ---
+
+function getRoundedRectPath(size, radius) {
+  const key = `${size}:${radius}`;
+
+  if (pathCache.has(key)) {
+    return pathCache.get(key);
+  }
+
+  const path = new Path2D();
+
+  path.moveTo(radius, 0);
+
+  path.lineTo(size - radius, 0);
+  path.quadraticCurveTo(size, 0, size, radius);
+
+  path.lineTo(size, size - radius);
+  path.quadraticCurveTo(size, size, size - radius, size);
+
+  path.lineTo(radius, size);
+  path.quadraticCurveTo(0, size, 0, size - radius);
+
+  path.lineTo(0, radius);
+  path.quadraticCurveTo(0, 0, radius, 0);
+
+  path.closePath();
+
+  pathCache.set(key, path);
+
+  return path;
+}
+
+function drawRoundedRect(ctx, size, radius, color) {
+  ctx.fillStyle = color;
+  ctx.fill(getRoundedRectPath(size, radius));
+}
+
+
+// --- Pickers ---
 
 function initPickers() {
   bgPicker = Pickr.create({
-    el: '#bgColorButton',
-    theme: 'monolith',
-    default: '#320984',
-    position: 'left',
+    el: "#bgColorButton",
+    theme: "monolith",
+    default: bgColor,
+    position: "left",
     components: {
       preview: true,
-      opacity: false,
       hue: true,
       interaction: {
-        hex: false,
-        rgba: false,
-        input: true,
-        save: true,
+        input: true
       }
     }
   });
 
   iconPicker = Pickr.create({
-    el: '#iconColorButton',
-    theme: 'monolith',
-    default: '#ffffff',
-    position: 'right',
+    el: "#iconColorButton",
+    theme: "monolith",
+    default: iconColor,
+    position: "right",
     components: {
       preview: true,
-      opacity: false,
       hue: true,
       interaction: {
-        hex: false,
-        rgba: false,
         input: true,
-        save: true,
       }
     }
   });
 
-  bgPicker.on('change', (color) => setBgColor(color.toHEXA().toString()));
-  bgPicker.on('save', (color) => {
-    setBgColor(color.toHEXA().toString());
-    bgPicker.hide();
+  bgPicker.on("change", color => {
+    bgColor = color.toHEXA().toString();
+    bgPicker.save();
+    scheduleRender();
   });
 
-  iconPicker.on('change', (color) => setIconColor(color.toHEXA().toString()));
-  iconPicker.on('save', (color) => {
-    setIconColor(color.toHEXA().toString());
-    iconPicker.hide();
+  iconPicker.on("change", color => {
+    iconColor = color.toHEXA().toString();
+    scheduleRender();
   });
 }
 
-let bgColor = '#320984';
-let iconColor = '#ffffff';
-let pickersInitialized = false;
 
-function setBgColor(value) {
-  bgColor = value;
-  render();
-}
-
-function setIconColor(value) {
-  iconColor = value;
-  render();
-}
-
-// --- Fetch icon ---
-const iconCache = new Map();
+// --- Icon Fetching ---
 
 async function fetchIcon(name) {
-  if (iconCache.has(name)) return iconCache.get(name);
+  if (iconCache.has(name)) {
+    return iconCache.get(name);
+  }
+
+  currentAbortController?.abort();
+
+  currentAbortController = new AbortController();
 
   const url = `https://raw.githubusercontent.com/google/material-design-icons/refs/heads/master/symbols/web/${name}/materialsymbolssharp/${name}_fill1_24px.svg`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("not found");
 
-  const text = await res.text();
-  iconCache.set(name, text);
-  return text;
+  const res = await fetch(url, {
+    cache: "force-cache",
+    signal: currentAbortController.signal
+  });
+
+  if (!res.ok) {
+    throw new Error("Icon not found");
+  }
+
+  const svg = await res.text();
+
+  iconCache.set(name, svg);
+
+  return svg;
 }
 
-// --- Draw background ---
-function drawRoundedRect(size, radius, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(radius, 0);
-  ctx.lineTo(size - radius, 0);
-  ctx.quadraticCurveTo(size, 0, size, radius);
-  ctx.lineTo(size, size - radius);
-  ctx.quadraticCurveTo(size, size, size - radius, size);
-  ctx.lineTo(radius, size);
-  ctx.quadraticCurveTo(0, size, 0, size - radius);
-  ctx.lineTo(0, radius);
-  ctx.quadraticCurveTo(0, 0, radius, 0);
-  ctx.closePath();
-  ctx.fill();
+
+// --- SVG Coloring ---
+
+function getColoredSVG(name, svgText, color) {
+  const cacheKey = `${name}:${color}`;
+
+  if (coloredSvgCache.has(cacheKey)) {
+    return coloredSvgCache.get(cacheKey);
+  }
+
+  const doc = new DOMParser()
+    .parseFromString(svgText, "image/svg+xml");
+
+  doc.documentElement.setAttribute("fill", color);
+
+  const svg = new XMLSerializer()
+    .serializeToString(doc);
+
+  coloredSvgCache.set(cacheKey, svg);
+
+  return svg;
 }
 
-// --- Main render ---
+
+// --- Main Render ---
+
 async function render() {
+  const version = ++renderVersion;
   const name = iconInput.value.trim();
-  const radius = parseInt(radiusInput.value);
 
   if (!name) return;
+
+  const radius = parseInt(radiusInput.value, 10);
 
   try {
     const svgText = await fetchIcon(name);
 
-    const coloredSVG = svgText.replace(
-      "<svg",
-      `<svg fill="${iconColor}"`
-    );
+    if (version !== renderVersion) return;
 
-    const blob = new Blob([coloredSVG], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
+    const coloredSVG = getColoredSVG(name, svgText, iconColor);
 
     const img = new Image();
 
     img.onload = () => {
-      const off = document.createElement("canvas");
-      off.width = 512;
-      off.height = 512;
-      const octx = off.getContext("2d");
+      if (version !== renderVersion) return;
 
-      octx.fillStyle = bgColor;
-      octx.beginPath();
-      octx.moveTo(radius, 0);
-      octx.lineTo(512 - radius, 0);
-      octx.quadraticCurveTo(512, 0, 512, radius);
-      octx.lineTo(512, 512 - radius);
-      octx.quadraticCurveTo(512, 512, 512 - radius, 512);
-      octx.lineTo(radius, 512);
-      octx.quadraticCurveTo(0, 512, 0, 512 - radius);
-      octx.lineTo(0, radius);
-      octx.quadraticCurveTo(0, 0, radius, 0);
-      octx.closePath();
-      octx.fill();
+      octx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-      const padding = 80;
-      octx.drawImage(img, padding, padding, 512 - padding * 2, 512 - padding * 2);
+      drawRoundedRect(
+        octx,
+        CANVAS_SIZE,
+        radius,
+        bgColor
+      );
 
-      ctx.clearRect(0, 0, 512, 512);
-      ctx.drawImage(off, 0, 0);
+      octx.drawImage(
+        img,
+        ICON_PADDING,
+        ICON_PADDING,
+        CANVAS_SIZE - ICON_PADDING * 2,
+        CANVAS_SIZE - ICON_PADDING * 2
+      );
 
-      URL.revokeObjectURL(url);
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.drawImage(offscreen, 0, 0);
     };
 
-    img.src = url;
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(coloredSVG)}`;
 
-  } catch {
-    // ignore
+  } catch (err) {
+    if (err.name === "AbortError") {
+      return;
+    }
+
+    console.error(err);
   }
 }
 
-// --- Debounce (avoid spamming GitHub requests) ---
-function scheduleRender() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(render, 250);
-}
 
-// --- Event listeners (LIVE UPDATE) ---
+// --- Downloads ---
+
+icoBtn.addEventListener("click", async () => {
+  try {
+    const pngBuffers = await Promise.all(
+      ICO_SIZES.map(async size => {
+
+        const blob = await canvasToBlob(size);
+
+        return blob.arrayBuffer();
+      })
+    );
+
+    const icoBuffer = await pngToIco(pngBuffers);
+
+    const icoBlob = new Blob(
+      [icoBuffer],
+      { type: "image/x-icon" }
+    );
+
+    downloadBlob(icoBlob, "favicon.ico");
+
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+zipBtn.addEventListener("click", async () => {
+  try {
+    const zip = new JSZip();
+
+    for (const size of EXPORT_SIZES) {
+      const blob = await canvasToBlob(size);
+      zip.file(`favicon-${size}.png`, blob);
+    }
+
+    const content = await zip.generateAsync({
+      type: "blob"
+    });
+
+    downloadBlob(content, "favicons.zip");
+
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+
+// --- Events ---
+
 iconInput.addEventListener("input", scheduleRender);
-radiusInput.addEventListener("input", render);
+radiusInput.addEventListener("input", scheduleRender);
 
-// --- Canvas resize helper ---
-function canvasToBlob(size) {
-  const temp = document.createElement("canvas");
-  temp.width = size;
-  temp.height = size;
-  temp.getContext("2d").drawImage(canvas, 0, 0, size, size);
-  return new Promise(res => temp.toBlob(res));
-}
 
-// --- ICO download ---
-icoBtn.onclick = async () => {
-  const sizes = [16, 32, 48, 64];
-  const blobs = await Promise.all(sizes.map(canvasToBlob));
+// --- Init ---
 
-  const header = new Uint8Array(6 + sizes.length * 16);
-  const view = new DataView(header.buffer);
-
-  view.setUint16(2, 1, true);
-  view.setUint16(4, sizes.length, true);
-
-  let offset = header.length;
-  const parts = [header];
-
-  blobs.forEach((blob, i) => {
-    const size = sizes[i];
-    view.setUint8(6 + i * 16, size);
-    view.setUint8(7 + i * 16, size);
-    view.setUint32(14 + i * 16, blob.size, true);
-    view.setUint32(18 + i * 16, offset, true);
-
-    parts.push(blob);
-    offset += blob.size;
-  });
-
-  const ico = new Blob(parts, { type: "image/x-icon" });
-
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(ico);
-  a.download = "favicon.ico";
-  a.click();
-};
-
-// --- ZIP download ---
-zipBtn.onclick = async () => {
-  const sizes = [16, 32, 48, 64, 128, 256, 512];
-
-  const files = await Promise.all(
-    sizes.map(async size => ({
-      name: `favicon-${size}.png`,
-      blob: await canvasToBlob(size)
-    }))
-  );
-
-  let offset = 0;
-  const fileParts = [];
-  const centralParts = [];
-
-  files.forEach(file => {
-    const nameBytes = new TextEncoder().encode(file.name);
-
-    const local = new Uint8Array(30 + nameBytes.length);
-    const view = new DataView(local.buffer);
-
-    view.setUint32(0, 0x04034b50, true);
-    view.setUint16(26, nameBytes.length, true);
-
-    local.set(nameBytes, 30);
-
-    fileParts.push(local, file.blob);
-
-    const central = new Uint8Array(46 + nameBytes.length);
-    const cview = new DataView(central.buffer);
-
-    cview.setUint32(0, 0x02014b50, true);
-    cview.setUint16(28, nameBytes.length, true);
-    cview.setUint32(42, offset, true);
-
-    central.set(nameBytes, 46);
-    centralParts.push(central);
-
-    offset += local.length + file.blob.size;
-  });
-
-  const end = new Uint8Array(22);
-  new DataView(end.buffer).setUint32(0, 0x06054b50, true);
-
-  const zip = new Blob([...fileParts, ...centralParts, end]);
-
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(zip);
-  a.download = "favicons.zip";
-  a.click();
-};
-
-// Initialize pickers and initial render
 initPickers();
-scheduleRender();
-pickersInitialized = true;
 
-document.body.addEventListener('load', () => {
-  const labels = document.querySelectorAll('.color-label');
-  labels.forEach(label => {
-    label.textContent = label.dataset.value;
-  });
-  render();
+window.addEventListener("load", () => {
+  scheduleRender(); 
 });

@@ -3,32 +3,36 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Favicon Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Material Symbol Favicon Generator</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/png-to-ico/index.js"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-
   <div class="app">
-
-    <!-- LEFT: CONTROLS -->
     <div class="panel controls">
       <h2>Favicon Generator</h2>
 
       <label>
         Icon Name
-        <input id="iconName" value="home" />
+        <input id="iconName" value="home" autocomplete="off" />
       </label>
 
       <label>
-        Background color
+        Background Color
         <button id="bgColorButton"></button>
       </label>
 
       <label>
-        Icon color
+        Icon Color
         <button id="iconColorButton"></button>
       </label>
 
@@ -36,19 +40,16 @@
         Corner Radius
         <input type="range" id="radius" min="0" max="256" value="64" />
       </label>
-
     </div>
 
-    <!-- RIGHT: PREVIEW -->
     <div class="panel preview">
       <canvas id="canvas" width="512" height="512"></canvas>
 
       <div class="downloads">
         <button id="downloadICO">Download .ico</button>
-        <button id="downloadZIP">Download PNG zip</button>
+        <button id="downloadZIP">Download PNG ZIP</button>
       </div>
     </div>
-
   </div>
 
   <script src="app.js"></script>
