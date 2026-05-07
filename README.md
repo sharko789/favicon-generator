@@ -65,6 +65,6 @@ Simply open `content/index.html` in a browser. No server required.
 ## Acknowledgements
 
 - **[Google Material Design Icons](https://fonts.google.com/icons)** — Icon library and source for all material symbols
-- **[Pickr](https://github.com/Simonwep/pickr)** — Color picker library by Simon West(℅)
+- **[Pickr](https://github.com/Simonwep/pickr)** — Color picker library
 - **[JSZip](https://github.com/Stuk/jszip)** — JavaScript ZIP library for PNG packaging
 
