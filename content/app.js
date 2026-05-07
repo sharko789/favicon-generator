@@ -2,8 +2,6 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const iconInput = document.getElementById("iconName");
-const bgInput = document.getElementById("bgColor");
-const iconColorInput = document.getElementById("iconColor");
 const radiusInput = document.getElementById("radius");
 
 const icoBtn = document.getElementById("downloadICO");
@@ -11,6 +9,72 @@ const zipBtn = document.getElementById("downloadZIP");
 
 let currentIconName = "";
 let debounceTimer = null;
+
+// --- Create Pickr instances for both colors ---
+let bgPicker, iconPicker;
+
+function initPickers() {
+  bgPicker = Pickr.create({
+    el: '#bgColorButton',
+    theme: 'monolith',
+    default: '#1e1e1e',
+    position: 'left',
+    components: {
+      preview: true,
+      opacity: false,
+      hue: true,
+      interaction: {
+        hex: false,
+        rgba: false,
+        input: true,
+        save: true,
+      }
+    }
+  });
+
+  iconPicker = Pickr.create({
+    el: '#iconColorButton',
+    theme: 'monolith',
+    default: '#ffffff',
+    position: 'right',
+    components: {
+      preview: true,
+      opacity: false,
+      hue: true,
+      interaction: {
+        hex: false,
+        rgba: false,
+        input: true,
+        save: true,
+      }
+    }
+  });
+
+  bgPicker.on('change', (color) => setBgColor(color.toHEXA().toString()));
+  bgPicker.on('save', (color) => {
+    setBgColor(color.toHEXA().toString());
+    bgPicker.hide();
+  });
+
+  iconPicker.on('change', (color) => setIconColor(color.toHEXA().toString()));
+  iconPicker.on('save', (color) => {
+    setIconColor(color.toHEXA().toString());
+    iconPicker.hide();
+  });
+}
+
+let bgColor = '#1e1e1e';
+let iconColor = '#ffffff';
+
+function setBgColor(value) {
+  bgColor = value;
+  render();
+}
+
+function setIconColor(value) {
+  iconColor = value;
+  render();
+}
 
 // --- Fetch icon ---
 const iconCache = new Map();
@@ -47,8 +111,6 @@ function drawRoundedRect(size, radius, color) {
 // --- Main render ---
 async function render() {
   const name = iconInput.value.trim();
-  const bg = bgInput.value;
-  const iconColor = iconColorInput.value;
   const radius = parseInt(radiusInput.value);
 
   if (!name) return;
@@ -67,14 +129,12 @@ async function render() {
     const img = new Image();
 
     img.onload = () => {
-      // 👇 draw OFFSCREEN first
       const off = document.createElement("canvas");
       off.width = 512;
       off.height = 512;
       const octx = off.getContext("2d");
 
-      // background
-      octx.fillStyle = bg;
+      octx.fillStyle = bgColor;
       octx.beginPath();
       octx.moveTo(radius, 0);
       octx.lineTo(512 - radius, 0);
@@ -88,11 +148,9 @@ async function render() {
       octx.closePath();
       octx.fill();
 
-      // icon
       const padding = 80;
       octx.drawImage(img, padding, padding, 512 - padding * 2, 512 - padding * 2);
 
-      // 👇 swap in ONE operation (no flicker)
       ctx.clearRect(0, 0, 512, 512);
       ctx.drawImage(off, 0, 0);
 
@@ -114,8 +172,6 @@ function scheduleRender() {
 
 // --- Event listeners (LIVE UPDATE) ---
 iconInput.addEventListener("input", scheduleRender);
-bgInput.addEventListener("input", render);
-iconColorInput.addEventListener("input", render);
 radiusInput.addEventListener("input", render);
 
 // --- Canvas resize helper ---
@@ -212,5 +268,12 @@ zipBtn.onclick = async () => {
   a.click();
 };
 
-// initial render
-render();
+// Initialize pickers and initial render
+initPickers();
+document.body.addEventListener('load', () => {
+  const labels = document.querySelectorAll('.color-label');
+  labels.forEach(label => {
+    label.textContent = label.dataset.value;
+  });
+  render();
+});

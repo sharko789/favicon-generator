@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Favicon Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -19,18 +21,18 @@
     </label>
 
     <label>
-      Background
-      <input type="color" id="bgColor" value="#1e1e1e"/>
+      Background color
+      <button id="bgColorButton"></button>
     </label>
 
     <label>
-      Icon Color
-      <input type="color" id="iconColor" value="#ffffff"/>
+      Icon color
+      <button id="iconColorButton"></button>
     </label>
 
     <label>
       Corner Radius
-      <input type="range" id="radius" min="0" max="800" value="64"/>
+      <input type="range" id="radius" min="0" max="256" value="64"/>
     </label>
 
   </div>
